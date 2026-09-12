@@ -144,14 +144,7 @@
       box-shadow: var(--shadow);
     }
 
-    .details-header {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 14px;
-      padding-bottom: 13px;
-      border-bottom: 1px solid var(--line);
-    }
+    .details-header { padding-bottom: 2px; }
 
     .details-title {
       margin: 0;
@@ -160,26 +153,65 @@
       letter-spacing: -0.01em;
     }
 
-    .network-block { min-width: 0; text-align: right; }
-
     .meta-label {
       display: block;
-      margin-bottom: 2px;
+      margin-bottom: 7px;
       color: var(--muted);
-      font-size: 11px;
+      font-size: 12px;
     }
 
-    .network {
-      display: block;
-      font-size: 13px;
+    .network-field { margin-top: 12px; }
+
+    .network-select-wrap { position: relative; }
+
+    .network-select-wrap::after {
+      position: absolute;
+      top: 50%;
+      right: 16px;
+      width: 8px;
+      height: 8px;
+      transform: translateY(-70%) rotate(45deg);
+      border-right: 2px solid var(--muted);
+      border-bottom: 2px solid var(--muted);
+      content: "";
+      pointer-events: none;
+    }
+
+    .network-select-wrap.single::after { display: none; }
+
+    .network-select {
+      width: 100%;
+      min-height: 50px;
+      padding: 0 44px 0 13px;
+      appearance: none;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      background: #fff;
+      color: var(--text);
+      cursor: pointer;
+      font: inherit;
+      font-size: 14px;
       font-weight: 800;
-      line-height: 1.3;
+    }
+
+    .network-select:focus-visible {
+      outline: 3px solid rgba(21, 94, 239, 0.28);
+      outline-offset: 2px;
+      border-color: var(--accent);
+    }
+
+    .network-select:disabled {
+      padding-right: 13px;
+      background: var(--soft);
+      color: var(--text);
+      cursor: default;
+      opacity: 1;
     }
 
     .qr-wrap {
       display: flex;
       justify-content: center;
-      padding: 17px 0 14px;
+      padding: 15px 0 14px;
     }
 
     .qr-frame {
@@ -313,9 +345,16 @@
     <section class="details" aria-labelledby="detailsTitle">
       <div class="details-header">
         <h2 class="details-title" id="detailsTitle">Receive USDT</h2>
-        <div class="network-block">
-          <span class="meta-label">Network</span>
-          <span class="network" id="network">TRON (TRC20)</span>
+      </div>
+
+      <div class="network-field">
+        <label class="meta-label" for="networkSelect">Network</label>
+        <div class="network-select-wrap" id="networkSelectWrap">
+          <select class="network-select" id="networkSelect" aria-label="Network">
+            <option value="tron">TRON (TRC20)</option>
+            <option value="ethereum">Ethereum (ERC20)</option>
+            <option value="bnb">BNB Smart Chain (BEP20)</option>
+          </select>
         </div>
       </div>
 
@@ -2640,35 +2679,49 @@ var qrcode = function() {
 
       const ASSETS = Object.freeze({
         USDT: Object.freeze({
-          network: 'TRON (TRC20)',
-          address: 'T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb'
+          networks: Object.freeze([
+            Object.freeze({ id: 'tron', label: 'TRON (TRC20)', address: 'T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb' }),
+            Object.freeze({ id: 'ethereum', label: 'Ethereum (ERC20)', address: '0x000000000000000000000000000000000000dEaD' }),
+            Object.freeze({ id: 'bnb', label: 'BNB Smart Chain (BEP20)', address: '0x0000000000000000000000000000000000000001' })
+          ])
         }),
         BTC: Object.freeze({
-          network: 'Bitcoin',
-          address: '1BitcoinEaterAddressDontSendf59kuE'
+          networks: Object.freeze([
+            Object.freeze({ id: 'bitcoin', label: 'Bitcoin', address: '1BitcoinEaterAddressDontSendf59kuE' })
+          ])
         }),
         ETH: Object.freeze({
-          network: 'Ethereum (ERC20)',
-          address: '0x000000000000000000000000000000000000dEaD'
+          networks: Object.freeze([
+            Object.freeze({ id: 'ethereum', label: 'Ethereum', address: '0x000000000000000000000000000000000000dEaD' }),
+            Object.freeze({ id: 'arbitrum', label: 'Arbitrum One', address: '0x0000000000000000000000000000000000000002' }),
+            Object.freeze({ id: 'base', label: 'Base', address: '0x0000000000000000000000000000000000000003' })
+          ])
         }),
         USDC: Object.freeze({
-          network: 'Ethereum (ERC20)',
-          address: '0x0000000000000000000000000000000000000001'
+          networks: Object.freeze([
+            Object.freeze({ id: 'ethereum', label: 'Ethereum (ERC20)', address: '0x0000000000000000000000000000000000000001' }),
+            Object.freeze({ id: 'base', label: 'Base', address: '0x0000000000000000000000000000000000000004' }),
+            Object.freeze({ id: 'solana', label: 'Solana', address: '1nc1nerator11111111111111111111111111111111' })
+          ])
         })
       });
 
       const buttons = [...document.querySelectorAll('.asset-card')];
       const detailsTitle = document.getElementById('detailsTitle');
-      const networkEl = document.getElementById('network');
+      const networkSelect = document.getElementById('networkSelect');
+      const networkSelectWrap = document.getElementById('networkSelectWrap');
       const addressEl = document.getElementById('address');
       const qrCanvas = document.getElementById('qr');
       const copyBtn = document.getElementById('copyBtn');
       const toast = document.getElementById('toast');
 
       let currentAsset = 'USDT';
+      const selectedNetworkByAsset = Object.fromEntries(
+        Object.entries(ASSETS).map(([asset, item]) => [asset, item.networks[0].id])
+      );
       let feedbackTimer;
 
-      function drawQr(address, asset) {
+      function drawQr(address, asset, networkLabel) {
         const code = qrcode(0, 'M');
         code.addData(address, 'Byte');
         code.make();
@@ -2683,8 +2736,9 @@ var qrcode = function() {
         qrCanvas.height = pixelSize;
         qrCanvas.dataset.address = address;
         qrCanvas.dataset.asset = asset;
+        qrCanvas.dataset.network = networkLabel;
         qrCanvas.dataset.moduleCount = String(moduleCount);
-        qrCanvas.setAttribute('aria-label', `${asset} wallet address QR code`);
+        qrCanvas.setAttribute('aria-label', `${asset} wallet address QR code on ${networkLabel}`);
 
         context.imageSmoothingEnabled = false;
         context.fillStyle = '#ffffff';
@@ -2713,6 +2767,33 @@ var qrcode = function() {
         toast.textContent = '';
       }
 
+      function getSelectedNetwork(asset = currentAsset) {
+        const item = ASSETS[asset];
+        return item.networks.find((network) => network.id === selectedNetworkByAsset[asset]) || item.networks[0];
+      }
+
+      function renderNetworkOptions(asset) {
+        const networks = ASSETS[asset].networks;
+        networkSelect.replaceChildren();
+
+        networks.forEach((network) => {
+          const option = document.createElement('option');
+          option.value = network.id;
+          option.textContent = network.label;
+          networkSelect.appendChild(option);
+        });
+
+        networkSelect.value = selectedNetworkByAsset[asset];
+        networkSelect.disabled = networks.length === 1;
+        networkSelectWrap.classList.toggle('single', networks.length === 1);
+      }
+
+      function renderNetworkDetails() {
+        const network = getSelectedNetwork();
+        addressEl.textContent = network.address;
+        drawQr(network.address, currentAsset, network.label);
+      }
+
       function render(asset) {
         const item = ASSETS[asset];
         if (!item) return;
@@ -2727,9 +2808,8 @@ var qrcode = function() {
         });
 
         detailsTitle.textContent = `Receive ${asset}`;
-        networkEl.textContent = item.network;
-        addressEl.textContent = item.address;
-        drawQr(item.address, asset);
+        renderNetworkOptions(asset);
+        renderNetworkDetails();
       }
 
       function legacyCopy(text) {
@@ -2776,8 +2856,14 @@ var qrcode = function() {
         button.addEventListener('click', () => render(button.dataset.asset));
       });
 
+      networkSelect.addEventListener('change', () => {
+        selectedNetworkByAsset[currentAsset] = networkSelect.value;
+        resetCopyFeedback();
+        renderNetworkDetails();
+      });
+
       copyBtn.addEventListener('click', async () => {
-        const address = ASSETS[currentAsset].address;
+        const address = getSelectedNetwork().address;
 
         try {
           await writeToClipboard(address);
